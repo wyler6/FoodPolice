@@ -163,7 +163,6 @@ local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:RegisterEvent("UNIT_AURA")
-frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("READY_CHECK")
 
@@ -207,7 +206,7 @@ frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
         lastYellTime = 0
         CheckAll()
 
-    elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
+    elseif event == "PLAYER_ENTERING_WORLD" then
         CheckAll()
     end
 end)
