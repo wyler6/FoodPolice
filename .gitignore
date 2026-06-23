@@ -1,0 +1,12 @@
+# Claude Code
+CLAUDE.md
+
+# Distribution zip (built artifact, not source)
+*.zip
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
