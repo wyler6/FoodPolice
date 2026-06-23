@@ -1,0 +1,64 @@
+name: Release to CurseForge
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read addon metadata
+        id: meta
+        run: |
+          VERSION=$(grep "^## Version:" FoodPolice.toc | awk '{print $NF}')
+          INTERFACE=$(grep "^## Interface:" FoodPolice.toc | awk '{print $NF}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "interface=$INTERFACE" >> $GITHUB_OUTPUT
+
+      - name: Resolve CurseForge game version ID
+        id: cf_game_version
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          IFACE="${{ steps.meta.outputs.interface }}"
+          MAJOR=$((IFACE / 10000))
+          MINOR=$(( (IFACE % 10000) / 100 ))
+          PATCH=$((IFACE % 100))
+          VERSION_STR="$MAJOR.$MINOR.$PATCH"
+          echo "Looking for CurseForge game version: $VERSION_STR"
+
+          VERSIONS=$(curl -sf -H "X-Api-Token: $CF_API_KEY" \
+            "https://wow.curseforge.com/api/game/versions")
+
+          VERSION_ID=$(echo "$VERSIONS" | jq --arg v "$VERSION_STR" \
+            '[.[] | select(.name == $v)] | .[0].id')
+
+          echo "Found game version ID: $VERSION_ID"
+          echo "id=$VERSION_ID" >> $GITHUB_OUTPUT
+
+      - name: Build zip
+        run: |
+          mkdir -p pkg/FoodPolice
+          cp FoodPolice.lua FoodPolice.toc FoodPolice_ico.png pkg/FoodPolice/
+          cd pkg
+          zip -r "../FoodPolice-${{ steps.meta.outputs.version }}.zip" FoodPolice/
+
+      - name: Upload to CurseForge
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          METADATA=$(jq -n \
+            --argjson gv "${{ steps.cf_game_version.outputs.id }}" \
+            --arg ver "${{ steps.meta.outputs.version }}" \
+            '{gameVersions: [$gv], releaseType: "release", changelog: ("Release v" + $ver), changelogType: "text"}')
+
+          curl -sf -X POST \
+            -H "X-Api-Token: $CF_API_KEY" \
+            -F "metadata=$METADATA" \
+            -F "file=@FoodPolice-${{ steps.meta.outputs.version }}.zip" \
+            "https://wow.curseforge.com/api/projects/1585629/upload-file"
