@@ -2,6 +2,6 @@
 ## Title: Food Police
 ## Notes: Yells at group members who forget their food buffs before a pull
 ## Author: wyler6
-## Version: 1.0
+## Version: 1.1
 
 FoodPolice.lua

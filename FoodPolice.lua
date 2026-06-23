@@ -32,7 +32,11 @@ local lastYellTime = 0
 
 FoodPoliceDB = FoodPoliceDB or {}
 
-RegisterAddonMessagePrefix(MSG_PREFIX)
+-- MoP Classic runs on a modern client; RegisterAddonMessagePrefix moved to C_ChatInfo
+local _RegisterPrefix = C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix or RegisterAddonMessagePrefix
+local _SendAddonMessage = C_ChatInfo and C_ChatInfo.SendAddonMessage or SendAddonMessage
+
+_RegisterPrefix(MSG_PREFIX)
 
 local function Print(msg)
     print("|cffff9900[FoodPolice]|r " .. msg)
@@ -76,10 +80,26 @@ local function CheckAndYell(targetName)
     if now - lastYellTime < YELL_COOLDOWN then return end
     local unit = FindUnitForName(targetName)
     if not unit then return end
-    if not HasFoodBuff(unit) then
+    local hasBuff = HasFoodBuff(unit)
+    if not hasBuff then
         local msg = YELLS[math.random(#YELLS)]
-        SendChatMessage(targetName .. "! " .. msg, "YELL")
+        local fullMsg = targetName .. "! " .. msg
         lastYellTime = now
+        local channel = IsInRaid() and "RAID" or "PARTY"
+        C_Timer.After(0, function()
+            local eb = DEFAULT_CHAT_FRAME.editBox
+            local savedType = eb:GetAttribute("chatType")
+            local savedTarget = eb:GetAttribute("chatTarget")
+            local ok, err = pcall(SendChatMessage, fullMsg, channel)
+            if not ok then
+                Print("Chat error: " .. tostring(err))
+            else
+                pcall(function()
+                    eb:SetAttribute("chatType", savedType)
+                    eb:SetAttribute("chatTarget", savedTarget)
+                end)
+            end
+        end)
     end
 end
 
@@ -130,10 +150,10 @@ local function PushToGroup()
         table.insert(names, name)
     end
     if #names == 0 then
-        SendAddonMessage(MSG_PREFIX, "CLEAR", channel)
+        _SendAddonMessage(MSG_PREFIX, "CLEAR", channel)
         Print("Pushed CLEAR to the " .. channel:lower() .. ".")
     else
-        SendAddonMessage(MSG_PREFIX, "SET:" .. table.concat(names, ","), channel)
+        _SendAddonMessage(MSG_PREFIX, "SET:" .. table.concat(names, ","), channel)
         Print("Pushed " .. #names .. " target(s) to the " .. channel:lower() .. ".")
     end
 end
@@ -184,7 +204,6 @@ frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
         end
 
     elseif event == "READY_CHECK" then
-        -- Always fire on ready check regardless of cooldown
         lastYellTime = 0
         CheckAll()
 
