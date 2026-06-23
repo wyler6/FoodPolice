@@ -1,0 +1,7 @@
+## Interface: 50504
+## Title: Food Police
+## Notes: Yells at group members who forget their food buffs before a pull
+## Author: wyler6
+## Version: 1.0
+
+FoodPolice.lua
