@@ -2,7 +2,7 @@
 ## Title: Food Police
 ## Notes: Yells at group members who forget their food buffs before a pull
 ## Author: wyler6
-## Version: 1.2
+## Version: 1.3
 ## IconTexture: Interface\AddOns\FoodPolice\FoodPolice_ico.tga
 
 FoodPolice.lua
