@@ -50,7 +50,7 @@ jobs:
       - name: Build zip
         run: |
           mkdir -p pkg/FoodPolice
-          cp FoodPolice.lua FoodPolice.toc FoodPolice_ico.png pkg/FoodPolice/
+          cp FoodPolice.lua FoodPolice.toc FoodPolice_ico.png FoodPolice_ico.tga pkg/FoodPolice/
           # Stamp the resolved version into the packaged .toc so the in-game
           # version matches the tag, even if the committed .toc is stale.
           sed -i "s/^## Version:.*/## Version: ${{ steps.meta.outputs.version }}/" pkg/FoodPolice/FoodPolice.toc
