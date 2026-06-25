@@ -1,3 +1,11 @@
+## [1.6]
+- Added version check: addon announces its version to the group on login
+- Added /fp who command to see which group members have FoodPolice installed and their version
+- Notifies you locally if a group member is running a newer version than you
+
+## [1.5]
+- Fixed over-triggering: addon now only fires on Ready Check (removed UNIT_AURA and GROUP_ROSTER_UPDATE triggers)
+
 ## [1.4]
 - Fixed transparent icon background (eyes were removed in v1.3)
 - Release version now derived from git tag instead of .toc file

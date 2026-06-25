@@ -4,6 +4,17 @@
 local ADDON_NAME = "FoodPolice"
 local MSG_PREFIX = "FoodPolice"  -- max 16 chars
 
+local GetMeta = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+local ADDON_VERSION = GetMeta(ADDON_NAME, "Version") or "?.?"
+local peerVersions = {}  -- [playerName] = versionString
+
+local function ParseVersion(v)
+    local major, minor = v:match("^(%d+)%.(%d+)")
+    if major then return tonumber(major) * 100 + tonumber(minor) end
+    local n = v:match("^(%d+)")
+    return n and (tonumber(n) * 100) or 0
+end
+
 local YELLS = {
     "EAT YOUR FOOD!",
     "THE FEAST IS FREE!",
@@ -25,6 +36,25 @@ local YELLS = {
     "THE FEAST IS RIGHT THERE! CLICK IT!",
     "HOW IS THIS STILL HAPPENING.",
     "BLESS YOUR HEART, NOW EAT YOUR FOOD.",
+    "THE BUFF IS FREE. THE WIPE IS NOT.",
+    "I SWEAR ON MY ENCHANTS, EAT THE FOOD.",
+    "THERE IS A FEAST ON THE GROUND. IT IS CRYING.",
+    "YOUR STATS ARE SAD. EAT.",
+    "WE HAVE BEEN STANDING HERE FOR FIVE MINUTES. THE FOOD IS RIGHT THERE.",
+    "I MADE THAT FEAST MYSELF. PLEASE.",
+    "NOT A REQUEST. EAT.",
+    "THE BUFF LASTS AN HOUR. IT TAKES THREE SECONDS. DO THE MATH.",
+    "I AM LOOKING AT YOUR BUFF BAR AND I AM DISAPPOINTED.",
+    "EAT THE FOOD OR EXPLAIN YOURSELF.",
+    "THE BOSS HAS MORE HEALTH THAN YOUR WILLINGNESS TO EAT.",
+    "CLICKING THE FEAST IS LITERALLY FREE DPS.",
+    "YOUR CHARACTER IS HUNGRY. BE LESS HUNGRY.",
+    "I HAVE ASKED NICELY. I AM DONE ASKING NICELY.",
+    "FOOD NOW. FEELINGS LATER.",
+    "EVERY WIPE IS ON YOU SPECIFICALLY.",
+    "I WILL REMEMBER THIS WHEN WE WIPE.",
+    "WE HAVE BEEN OVER THIS.",
+    "SIT. EAT. COME BACK READY.",
 }
 
 local YELL_COOLDOWN = 45  -- seconds between yells
@@ -134,6 +164,12 @@ local function SenderIsLeader(senderName)
     return false
 end
 
+local function BroadcastVersion()
+    if not IsInGroup() then return end
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    _SendAddonMessage(MSG_PREFIX, "VER:" .. ADDON_VERSION, channel)
+end
+
 local function PushToGroup()
     if not AmILeader() then
         Print("Only the raid/party leader can push the watch list.")
@@ -160,6 +196,7 @@ end
 -- Event frame
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:RegisterEvent("READY_CHECK")
 
@@ -168,13 +205,29 @@ frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
         if arg1 == ADDON_NAME then
             FoodPoliceDB = FoodPoliceDB or {}
             FoodPoliceDB.targets = FoodPoliceDB.targets or {}
-            Print("Loaded. Type /fp for help.")
+            Print("Loaded v" .. ADDON_VERSION .. ". Type /fp for help.")
         end
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        peerVersions = {}
+        C_Timer.After(5, BroadcastVersion)
 
     elseif event == "CHAT_MSG_ADDON" then
         local prefix, message, channel, sender = arg1, arg2, arg3, arg4
         if prefix ~= MSG_PREFIX then return end
-        -- Only accept commands from the raid/party leader
+
+        -- Version broadcast: accept from anyone in the group
+        if message:sub(1, 4) == "VER:" then
+            local ver = message:sub(5)
+            local name = ShortName(sender)
+            peerVersions[name] = ver
+            if ParseVersion(ver) > ParseVersion(ADDON_VERSION) then
+                Print(name .. " has v" .. ver .. " (you have v" .. ADDON_VERSION .. ") — consider updating!")
+            end
+            return
+        end
+
+        -- Only accept SET/CLEAR commands from the raid/party leader
         if not SenderIsLeader(sender) then return end
 
         if message == "CLEAR" then
@@ -239,6 +292,20 @@ SlashCmdList["FOODPOLICE"] = function(input)
         FoodPoliceDB.targets = {}
         Print("Watch list cleared locally. Use /fp push to clear everyone else's.")
 
+    elseif cmd == "who" then
+        BroadcastVersion()
+        Print("FoodPolice v" .. ADDON_VERSION .. " — group version check:")
+        print("  - You: v" .. ADDON_VERSION)
+        local count = 0
+        for name, ver in pairs(peerVersions) do
+            local flag = ParseVersion(ver) > ParseVersion(ADDON_VERSION) and " (newer!)" or ""
+            print("  - " .. name .. ": v" .. ver .. flag)
+            count = count + 1
+        end
+        if count == 0 then
+            print("  (no responses yet — wait a moment and run /fp who again)")
+        end
+
     else
         Print("Commands:")
         print("  /fp add <name>    - Add a player to your watch list")
@@ -248,5 +315,6 @@ SlashCmdList["FOODPOLICE"] = function(input)
         print("  /fp check         - Force-check all targets now")
         print("  /fp test          - Preview a random yell")
         print("  /fp clear         - Clear your local list")
+        print("  /fp who           - Show which group members have FoodPolice")
     end
 end
