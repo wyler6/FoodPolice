@@ -1,3 +1,9 @@
+## [1.7]
+- Added configuration window (/fp config) with scrollable watch list and Remove buttons
+- Added Target button to add your current target directly from the UI
+- Added About panel with basic usage instructions
+- Added 20 new yell phrases (40 total)
+
 ## [1.6]
 - Added version check: addon announces its version to the group on login
 - Added /fp who command to see which group members have FoodPolice installed and their version
