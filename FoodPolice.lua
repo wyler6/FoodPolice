@@ -75,7 +75,6 @@ local function FindUnitForName(targetName)
 end
 
 local function CheckAndYell(targetName)
-    if InCombatLockdown() then return end
     local now = GetTime()
     if now - lastYellTime < YELL_COOLDOWN then return end
     local unit = FindUnitForName(targetName)
@@ -162,8 +161,6 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("CHAT_MSG_ADDON")
-frame:RegisterEvent("UNIT_AURA")
-frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("READY_CHECK")
 
 frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
@@ -195,18 +192,8 @@ frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
             Print("Watch list updated by raid leader (" .. count .. " target(s)).")
         end
 
-    elseif event == "UNIT_AURA" then
-        if not arg1 then return end
-        local unitName = GetUnitShortName(arg1)
-        if unitName and FoodPoliceDB.targets and FoodPoliceDB.targets[unitName] then
-            CheckAndYell(unitName)
-        end
-
     elseif event == "READY_CHECK" then
         lastYellTime = 0
-        CheckAll()
-
-    elseif event == "PLAYER_ENTERING_WORLD" then
         CheckAll()
     end
 end)
