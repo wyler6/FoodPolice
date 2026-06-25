@@ -193,6 +193,223 @@ local function PushToGroup()
     end
 end
 
+-- Config window
+local configFrame = nil
+local rowPool = {}
+
+local function RefreshConfigList()
+    if not configFrame then return end
+    for _, row in ipairs(rowPool) do row:Hide() end
+    local names = {}
+    for name in pairs(FoodPoliceDB.targets) do table.insert(names, name) end
+    table.sort(names)
+    local content = configFrame.listContent
+    local ROW_H = 24
+    for i, name in ipairs(names) do
+        local row = rowPool[i]
+        if not row then
+            row = CreateFrame("Frame", nil, content)
+            row:SetSize(248, ROW_H)
+            row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.label:SetPoint("LEFT", 4, 0)
+            row.removeBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            row.removeBtn:SetSize(52, 18)
+            row.removeBtn:SetPoint("RIGHT", -2, 0)
+            row.removeBtn:SetText("Remove")
+            rowPool[i] = row
+        end
+        row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
+        row.label:SetText(name)
+        local n = name
+        row.removeBtn:SetScript("OnClick", function()
+            FoodPoliceDB.targets[n] = nil
+            RefreshConfigList()
+        end)
+        row:Show()
+    end
+    content:SetHeight(math.max(#names * ROW_H, 1))
+    configFrame.emptyText:SetShown(#names == 0)
+end
+
+local aboutFrame = nil
+
+local function ToggleAbout()
+    if not aboutFrame then
+        local af = CreateFrame("Frame", "FoodPoliceAbout", UIParent, "BackdropTemplate")
+        af:SetSize(260, 295)
+        af:SetPoint("CENTER")
+        af:SetFrameStrata("DIALOG")
+        af:SetFrameLevel(20)
+        af:SetMovable(true)
+        af:EnableMouse(true)
+        af:RegisterForDrag("LeftButton")
+        af:SetScript("OnDragStart", af.StartMoving)
+        af:SetScript("OnDragStop", af.StopMovingOrSizing)
+        af:SetBackdrop({
+            bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
+            edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+        af:SetBackdropColor(0.05, 0.05, 0.05, 0.95)
+        af:SetBackdropBorderColor(0.6, 0.4, 0.1, 1)
+
+        local title = af:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOP", 0, -10)
+        title:SetText("Food Police v" .. ADDON_VERSION)
+
+        local closeBtn = CreateFrame("Button", nil, af, "UIPanelCloseButton")
+        closeBtn:SetPoint("TOPRIGHT", -4, -4)
+        closeBtn:SetScript("OnClick", function() af:Hide() end)
+
+        local body = af:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        body:SetPoint("TOPLEFT", 14, -36)
+        body:SetPoint("BOTTOMRIGHT", af, "BOTTOMRIGHT", -14, 10)
+        body:SetJustifyH("LEFT")
+        body:SetJustifyV("TOP")
+        body:SetSpacing(4)
+        body:SetText(
+            "Yells at raiders missing Well Fed\n" ..
+            "when a Ready Check is called.\n\n" ..
+            "|cffff9900HOW TO USE:|r\n" ..
+            "1. Add players to the watch list\n" ..
+            "2. Leader calls a Ready Check\n" ..
+            "3. The unfed get yelled at\n\n" ..
+            "|cffff9900COMMANDS:|r\n" ..
+            "/fp config  \226\128\148 open this window\n" ..
+            "/fp add     \226\128\148 add your target\n" ..
+            "/fp push    \226\128\148 sync list to group\n" ..
+            "/fp check   \226\128\148 force check now\n" ..
+            "/fp who     \226\128\148 version check\n" ..
+            "/fp test    \226\128\148 preview a yell"
+        )
+
+        aboutFrame = af
+    end
+    if aboutFrame:IsShown() then aboutFrame:Hide() else aboutFrame:Show() end
+end
+
+local function OpenConfig()
+    if not configFrame then
+        local f = CreateFrame("Frame", "FoodPoliceConfig", UIParent, "BackdropTemplate")
+        f:SetSize(300, 400)
+        f:SetPoint("CENTER")
+        f:SetMovable(true)
+        f:EnableMouse(true)
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving)
+        f:SetScript("OnDragStop", f.StopMovingOrSizing)
+        f:SetFrameStrata("DIALOG")
+        f:SetBackdrop({
+            bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
+            edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+        f:SetBackdropColor(0.05, 0.05, 0.05, 0.95)
+        f:SetBackdropBorderColor(0.6, 0.4, 0.1, 1)
+
+        local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOP", 0, -10)
+        title:SetText("Food Police")
+
+        local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        closeBtn:SetPoint("TOPRIGHT", -4, -4)
+        closeBtn:SetScript("OnClick", function() f:Hide() end)
+
+        local listLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        listLabel:SetPoint("TOPLEFT", 12, -36)
+        listLabel:SetText("Watch List:")
+
+        local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT", 12, -52)
+        scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 80)
+
+        local content = CreateFrame("Frame", nil, scroll)
+        content:SetWidth(248)
+        content:SetHeight(1)
+        scroll:SetScrollChild(content)
+        f.listContent = content
+
+        local emptyText = content:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+        emptyText:SetPoint("TOPLEFT", 4, -6)
+        emptyText:SetText("(empty — use Add below or /fp add <name>)")
+        f.emptyText = emptyText
+
+        local addLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        addLabel:SetPoint("BOTTOMLEFT", 12, 56)
+        addLabel:SetText("Add Player:")
+
+        local editBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+        editBox:SetSize(158, 20)
+        editBox:SetPoint("BOTTOMLEFT", 12, 34)
+        editBox:SetAutoFocus(false)
+        editBox:SetMaxLetters(50)
+
+        local addBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        addBtn:SetSize(46, 22)
+        addBtn:SetPoint("LEFT", editBox, "RIGHT", 6, 0)
+        addBtn:SetText("Add")
+
+        local targetBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        targetBtn:SetSize(68, 22)
+        targetBtn:SetPoint("LEFT", addBtn, "RIGHT", 4, 0)
+        targetBtn:SetText("Target")
+        targetBtn:SetScript("OnClick", function()
+            local name = ShortName(UnitName("target"))
+            if name then
+                FoodPoliceDB.targets[name] = true
+                RefreshConfigList()
+                Print("Now watching: " .. name)
+            else
+                Print("No target selected.")
+            end
+        end)
+
+        local function DoAdd()
+            local name = editBox:GetText():match("^%s*(.-)%s*$")
+            if name and name ~= "" then
+                FoodPoliceDB.targets[name] = true
+                editBox:SetText("")
+                RefreshConfigList()
+            end
+        end
+        editBox:SetScript("OnEnterPressed", DoAdd)
+        addBtn:SetScript("OnClick", DoAdd)
+
+        local pushBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        pushBtn:SetSize(70, 22)
+        pushBtn:SetPoint("BOTTOMLEFT", 12, 8)
+        pushBtn:SetText("Push")
+        pushBtn:SetScript("OnClick", PushToGroup)
+
+        local checkBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        checkBtn:SetSize(60, 22)
+        checkBtn:SetPoint("LEFT", pushBtn, "RIGHT", 4, 0)
+        checkBtn:SetText("Check")
+        checkBtn:SetScript("OnClick", function() lastYellTime = 0; CheckAll() end)
+
+        local clearBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        clearBtn:SetSize(60, 22)
+        clearBtn:SetPoint("LEFT", checkBtn, "RIGHT", 4, 0)
+        clearBtn:SetText("Clear All")
+        clearBtn:SetScript("OnClick", function()
+            FoodPoliceDB.targets = {}
+            RefreshConfigList()
+        end)
+
+        local aboutBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        aboutBtn:SetSize(52, 22)
+        aboutBtn:SetPoint("LEFT", clearBtn, "RIGHT", 4, 0)
+        aboutBtn:SetText("About")
+        aboutBtn:SetScript("OnClick", ToggleAbout)
+
+        configFrame = f
+    end
+    RefreshConfigList()
+    configFrame:Show()
+end
+
 -- Event frame
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
@@ -262,6 +479,17 @@ SlashCmdList["FOODPOLICE"] = function(input)
     if cmd == "add" and arg ~= "" then
         FoodPoliceDB.targets[arg] = true
         Print("Now watching: " .. arg)
+        if configFrame and configFrame:IsShown() then RefreshConfigList() end
+
+    elseif cmd == "add" then
+        local name = ShortName(UnitName("target"))
+        if name then
+            FoodPoliceDB.targets[name] = true
+            Print("Now watching: " .. name)
+            if configFrame and configFrame:IsShown() then RefreshConfigList() end
+        else
+            Print("No target selected. Usage: /fp add <name>")
+        end
 
     elseif cmd == "remove" and arg ~= "" then
         FoodPoliceDB.targets[arg] = nil
@@ -292,6 +520,9 @@ SlashCmdList["FOODPOLICE"] = function(input)
         FoodPoliceDB.targets = {}
         Print("Watch list cleared locally. Use /fp push to clear everyone else's.")
 
+    elseif cmd == "config" or cmd == "ui" then
+        OpenConfig()
+
     elseif cmd == "who" then
         BroadcastVersion()
         Print("FoodPolice v" .. ADDON_VERSION .. " — group version check:")
@@ -308,6 +539,7 @@ SlashCmdList["FOODPOLICE"] = function(input)
 
     else
         Print("Commands:")
+        print("  /fp config        - Open the configuration window")
         print("  /fp add <name>    - Add a player to your watch list")
         print("  /fp remove <name> - Remove a player")
         print("  /fp list          - Show current watch list")
