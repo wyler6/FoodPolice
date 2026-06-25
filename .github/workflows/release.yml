@@ -57,14 +57,27 @@ jobs:
           cd pkg
           zip -r "../FoodPolice-${{ steps.meta.outputs.version }}.zip" FoodPolice/
 
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md \
+            | sed '/^[[:space:]]*$/d')
+          if [ -z "$NOTES" ]; then
+            NOTES="Release v$VERSION"
+          fi
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Upload to CurseForge
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
         run: |
           METADATA=$(jq -n \
             --argjson gv "${{ steps.cf_game_version.outputs.id }}" \
-            --arg ver "${{ steps.meta.outputs.version }}" \
-            '{gameVersions: [$gv], releaseType: "release", changelog: ("Release v" + $ver), changelogType: "text"}')
+            --arg changelog "${{ steps.changelog.outputs.notes }}" \
+            '{gameVersions: [$gv], releaseType: "release", changelog: $changelog, changelogType: "markdown"}')
 
           curl -sf -X POST \
             -H "X-Api-Token: $CF_API_KEY" \
