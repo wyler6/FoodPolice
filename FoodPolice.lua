@@ -57,6 +57,81 @@ local YELLS = {
     "SIT. EAT. COME BACK READY.",
 }
 
+local NOODLE_CART_YELLS = {
+    "GET IN HERE BEFORE IT'S GONE!",
+    "SOUP'S ON. MOVE YOUR FEET.",
+    "FREE NOODLES. NO EXCUSES.",
+    "THE CART IS DOWN. GET YOUR BOWL.",
+    "HOT FRESH BUFFS ARE WAITING. CLICK THE CART.",
+    "NOODLES AVAILABLE. LAZINESS NOT ACCEPTED.",
+    "THIS CART DIDN'T DROP ITSELF. WELL, IT DID. GO EAT.",
+    "SLURP. NOW.",
+    "THAT NOODLE CART COST A LOT OF MATS. RESPECT IT.",
+    "THE BUFF IS IN THE BOWL. GET THE BOWL.",
+    "THIS CART TRAVELED VERY FAR TO BE IGNORED BY YOU.",
+    "ONE CLICK. WELL FED. DO IT.",
+    "THE NOODLE CART IS OPEN FOR BUSINESS.",
+    "FRESH NOODLES ON THE GROUND. EAT THEM.",
+    "MANDATORY SOUP TIME.",
+    "THE CART IS UP. THE BUFF IS FREE. YOUR DPS IS NOT.",
+    "GET YOUR NOODLES BEFORE THE BOSS EATS THEM.",
+    "STEP 1: FIND CART. STEP 2: CLICK CART. STEP 3: WIN.",
+    "NOODLES ARE A LOVE LANGUAGE. SHOW THEM LOVE.",
+    "IF YOU SKIP THIS CART I WILL KNOW.",
+    "THE CART SEES YOU. EAT.",
+    "FREE STATS ON THE GROUND. GO GET THEM.",
+    "THIS IS YOUR ONLY CHANCE FOR FREE NOODLES. DO NOT WASTE IT.",
+    "WELL FED OR BENCH YOURSELF.",
+    "THE NOODLE CART IS JUDGING YOU RIGHT NOW.",
+    "HONOR THE CART. CLICK THE CART. BECOME WELL FED.",
+    "NOODLE TIME IS SACRED. DO NOT DISHONOR IT.",
+    "THE CART HAS SPOKEN. IT SAYS EAT.",
+    "EVERY SECOND YOU DON'T EAT IS FREE DPS WASTED.",
+    "NOODLE CART SPOTTED. EAT OR EXPLAIN YOURSELF.",
+    "THE NOODLE CART WILL NOT WAIT FOREVER. MOVE.",
+    "EAT FIRST. WIPE LESS.",
+    "THERE IS A NOODLE CART. THERE IS NO EXCUSE.",
+    "THE CHEF WORKED HARD. EAT THE FOOD.",
+    "A NOODLE CART APPEARS! YOUR MOVE.",
+    "CLICK THE SHINY CART. GET THE SHINY BUFF.",
+    "THE NOODLE CART IS NOT A PROP. EAT FROM IT.",
+    "WE DO NOT LEAVE NOODLE CARTS UNEATEN IN THIS RAID.",
+    "TODAY WE FEAST. TODAY WE WIN. CLICK THE CART.",
+    "IF YOU CAN READ THIS, YOU ARE CLOSE ENOUGH TO CLICK THE CART.",
+}
+
+local NOODLE_CART_COOLDOWN = 20
+local lastCartTime = 0
+
+local function AmILeaderOrAssist()
+    if not IsInRaid() then return false end
+    if UnitIsGroupLeader("player") then return true end
+    local myName = GetUnitShortName("player")
+    for i = 1, GetNumGroupMembers() do
+        local name, rank = GetRaidRosterInfo(i)
+        if name and ShortName(name) == myName then
+            return rank >= 1  -- 1 = assist, 2 = leader
+        end
+    end
+    return false
+end
+
+local function AnnounceNoodleCart(casterName)
+    if not FoodPoliceDB.noodleCartEnabled then return end
+    if not AmILeaderOrAssist() then return end
+    local now = GetTime()
+    if now - lastCartTime < NOODLE_CART_COOLDOWN then return end
+    lastCartTime = now
+    local saying = NOODLE_CART_YELLS[math.random(#NOODLE_CART_YELLS)]
+    local fullMsg = (casterName or "Someone") .. " dropped a Noodle Cart! " .. saying
+    C_Timer.After(0, function()
+        local ok, err = pcall(SendChatMessage, fullMsg, "RAID_WARNING")
+        if not ok then
+            Print("RW error: " .. tostring(err))
+        end
+    end)
+end
+
 local YELL_COOLDOWN = 45  -- seconds between yells
 local lastYellTime = 0
 
@@ -292,7 +367,7 @@ end
 local function OpenConfig()
     if not configFrame then
         local f = CreateFrame("Frame", "FoodPoliceConfig", UIParent, "BackdropTemplate")
-        f:SetSize(300, 400)
+        f:SetSize(300, 432)
         f:SetPoint("CENTER")
         f:SetMovable(true)
         f:EnableMouse(true)
@@ -323,7 +398,7 @@ local function OpenConfig()
 
         local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 12, -52)
-        scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 80)
+        scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 112)
 
         local content = CreateFrame("Frame", nil, scroll)
         content:SetWidth(248)
@@ -337,12 +412,12 @@ local function OpenConfig()
         f.emptyText = emptyText
 
         local addLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        addLabel:SetPoint("BOTTOMLEFT", 12, 56)
+        addLabel:SetPoint("BOTTOMLEFT", 12, 88)
         addLabel:SetText("Add Player:")
 
         local editBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
         editBox:SetSize(158, 20)
-        editBox:SetPoint("BOTTOMLEFT", 12, 34)
+        editBox:SetPoint("BOTTOMLEFT", 12, 66)
         editBox:SetAutoFocus(false)
         editBox:SetMaxLetters(50)
 
@@ -377,6 +452,18 @@ local function OpenConfig()
         editBox:SetScript("OnEnterPressed", DoAdd)
         addBtn:SetScript("OnClick", DoAdd)
 
+        local ncCheck = CreateFrame("CheckButton", "FoodPoliceNoodleCheck", f, "UICheckButtonTemplate")
+        ncCheck:SetSize(24, 24)
+        ncCheck:SetPoint("BOTTOMLEFT", 12, 38)
+        ncCheck:SetChecked(FoodPoliceDB.noodleCartEnabled)
+        ncCheck:SetScript("OnClick", function(self)
+            FoodPoliceDB.noodleCartEnabled = self:GetChecked()
+        end)
+        local ncLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        ncLabel:SetPoint("LEFT", ncCheck, "RIGHT", 2, 0)
+        ncLabel:SetText("Noodle Cart Alerts (leader/assist)")
+        f.noodleCheck = ncCheck
+
         local pushBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         pushBtn:SetSize(70, 22)
         pushBtn:SetPoint("BOTTOMLEFT", 12, 8)
@@ -406,6 +493,9 @@ local function OpenConfig()
 
         configFrame = f
     end
+    if configFrame.noodleCheck then
+        configFrame.noodleCheck:SetChecked(FoodPoliceDB.noodleCartEnabled)
+    end
     RefreshConfigList()
     configFrame:Show()
 end
@@ -416,12 +506,14 @@ frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:RegisterEvent("READY_CHECK")
+frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
 frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
     if event == "ADDON_LOADED" then
         if arg1 == ADDON_NAME then
             FoodPoliceDB = FoodPoliceDB or {}
             FoodPoliceDB.targets = FoodPoliceDB.targets or {}
+            if FoodPoliceDB.noodleCartEnabled == nil then FoodPoliceDB.noodleCartEnabled = true end
             Print("Loaded v" .. ADDON_VERSION .. ". Type /fp for help.")
         end
 
@@ -465,6 +557,12 @@ frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
     elseif event == "READY_CHECK" then
         lastYellTime = 0
         CheckAll()
+
+    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        local _, subevent, _, _, sourceName, _, _, _, _, _, _, _, spellName = CombatLogGetCurrentEventInfo()
+        if subevent == "SPELL_CAST_SUCCESS" and spellName and spellName:find("Noodle Cart", 1, true) then
+            AnnounceNoodleCart(ShortName(sourceName))
+        end
     end
 end)
 

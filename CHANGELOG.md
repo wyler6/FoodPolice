@@ -1,3 +1,8 @@
+## [1.8]
+- Added Noodle Cart awareness: raid leader/assist auto-sends a raid warning when any player drops a Noodle Cart
+- 40 new "runny" noodle-themed raid warning phrases
+- Noodle Cart Alerts toggle added to the config window (/fp config)
+
 ## [1.7]
 - Added configuration window (/fp config) with scrollable watch list and Remove buttons
 - Added Target button to add your current target directly from the UI
