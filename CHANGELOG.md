@@ -1,6 +1,6 @@
 ## [1.8]
 - Added Noodle Cart awareness: raid leader/assist auto-sends a raid warning when any player drops a Noodle Cart
-- 40 new "runny" noodle-themed raid warning phrases
+- 40 new runny noodle-themed raid warning phrases
 - Noodle Cart Alerts toggle added to the config window (/fp config)
 
 ## [1.7]
