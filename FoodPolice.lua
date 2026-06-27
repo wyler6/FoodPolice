@@ -102,6 +102,7 @@ local NOODLE_CART_YELLS = {
 
 local NOODLE_CART_COOLDOWN = 20
 local lastCartTime = 0
+local noodleDebug = false
 
 local function AmILeaderOrAssist()
     if not IsInRaid() then return false end
@@ -117,10 +118,19 @@ local function AmILeaderOrAssist()
 end
 
 local function AnnounceNoodleCart(casterName)
-    if not FoodPoliceDB.noodleCartEnabled then return end
-    if not AmILeaderOrAssist() then return end
+    if not FoodPoliceDB.noodleCartEnabled then
+        if noodleDebug then Print("[NoodleDebug] feature disabled") end
+        return
+    end
+    if not AmILeaderOrAssist() then
+        if noodleDebug then Print("[NoodleDebug] not leader/assist — skipping RW") end
+        return
+    end
     local now = GetTime()
-    if now - lastCartTime < NOODLE_CART_COOLDOWN then return end
+    if now - lastCartTime < NOODLE_CART_COOLDOWN then
+        if noodleDebug then Print("[NoodleDebug] on cooldown") end
+        return
+    end
     lastCartTime = now
     local saying = NOODLE_CART_YELLS[math.random(#NOODLE_CART_YELLS)]
     local fullMsg = (casterName or "Someone") .. " dropped a Noodle Cart! " .. saying
@@ -560,8 +570,14 @@ frame:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg4)
 
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local _, subevent, _, _, sourceName, _, _, _, _, _, _, _, spellName = CombatLogGetCurrentEventInfo()
-        if subevent == "SPELL_CAST_SUCCESS" and spellName and spellName:find("Noodle Cart", 1, true) then
-            AnnounceNoodleCart(ShortName(sourceName))
+        if subevent == "SPELL_CAST_SUCCESS" and spellName then
+            if noodleDebug then
+                Print("[NoodleDebug] SPELL_CAST_SUCCESS: " .. tostring(spellName) .. " by " .. tostring(sourceName))
+            end
+            local lower = spellName:lower()
+            if lower:find("noodle", 1, true) or lower:find("pandaren banquet", 1, true) or lower:find("grand banquet", 1, true) then
+                AnnounceNoodleCart(ShortName(sourceName))
+            end
         end
     end
 end)
@@ -620,6 +636,14 @@ SlashCmdList["FOODPOLICE"] = function(input)
 
     elseif cmd == "config" or cmd == "ui" then
         OpenConfig()
+
+    elseif cmd == "noodletest" then
+        AnnounceNoodleCart(GetUnitShortName("player"))
+        Print("Noodle cart test fired (check if you are leader/assist in a raid).")
+
+    elseif cmd == "noodledebug" then
+        noodleDebug = not noodleDebug
+        Print("Noodle cart debug " .. (noodleDebug and "|cff00ff00ON|r — every SPELL_CAST_SUCCESS will be printed." or "|cffff0000OFF|r"))
 
     elseif cmd == "who" then
         BroadcastVersion()
