@@ -79,8 +79,17 @@ jobs:
             --arg changelog "${{ steps.changelog.outputs.notes }}" \
             '{gameVersions: [$gv], releaseType: "release", changelog: $changelog, changelogType: "markdown"}')
 
-          curl -sf -X POST \
+          echo "=== Metadata ==="
+          echo "$METADATA"
+          echo "=== Uploading ==="
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "X-Api-Token: $CF_API_KEY" \
             -F "metadata=$METADATA" \
             -F "file=@FoodPolice-${{ steps.meta.outputs.version }}.zip" \
-            "https://wow.curseforge.com/api/projects/1585629/upload-file"
+            "https://wow.curseforge.com/api/projects/1585629/upload-file")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "HTTP $HTTP_CODE: $BODY"
+          [ "$HTTP_CODE" -lt 400 ]
