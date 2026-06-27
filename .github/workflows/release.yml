@@ -79,10 +79,6 @@ jobs:
             --arg changelog "${{ steps.changelog.outputs.notes }}" \
             '{gameVersions: [$gv], releaseType: "release", changelog: $changelog, changelogType: "markdown"}')
 
-          echo "=== Metadata ==="
-          echo "$METADATA"
-          echo "=== Uploading ==="
-
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "X-Api-Token: $CF_API_KEY" \
             -F "metadata=$METADATA" \
