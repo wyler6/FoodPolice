@@ -55,6 +55,7 @@ local YELLS = {
     "I WILL REMEMBER THIS WHEN WE WIPE.",
     "WE HAVE BEEN OVER THIS.",
     "SIT. EAT. COME BACK READY.",
+    "SOMEWHERE IN PANDARIA, A CHILD IS STARVING. YOU HAVE A FEAST RIGHT IN FRONT OF YOU. EAT IT.",
 }
 
 local NOODLE_CART_YELLS = {
@@ -106,15 +107,7 @@ local noodleDebug = false
 
 local function AmILeaderOrAssist()
     if not IsInRaid() then return false end
-    if UnitIsGroupLeader("player") then return true end
-    local myName = GetUnitShortName("player")
-    for i = 1, GetNumGroupMembers() do
-        local name, rank = GetRaidRosterInfo(i)
-        if name and ShortName(name) == myName then
-            return rank >= 1  -- 1 = assist, 2 = leader
-        end
-    end
-    return false
+    return UnitIsGroupLeader("player") or UnitIsRaidOfficer("player")
 end
 
 local function AnnounceNoodleCart(casterName)

@@ -1,3 +1,9 @@
+## [1.9]
+- Fixed Noodle Cart Alerts not firing for raid assistants (switched to UnitIsRaidOfficer API)
+- Added /fp noodletest and /fp noodledebug diagnostic commands
+- Broadened Noodle Cart spell detection to catch all noodle/banquet variants
+- Added a new yell about the starving children of Pandaria
+
 ## [1.8]
 - Added Noodle Cart awareness: raid leader/assist auto-sends a raid warning when any player drops a Noodle Cart
 - 40 new runny noodle-themed raid warning phrases
